@@ -1,0 +1,106 @@
+package com.demo;
+
+import java.io.IOException;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.Mapper.Context;
+import org.apache.hadoop.mapreduce.Partitioner;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+
+public class AlphabetSortedClass {
+
+	public static class TvMapper extends Mapper<LongWritable ,Text ,Text,IntWritable>{
+
+		public void map(LongWritable key,Text value,Context con) throws IOException, InterruptedException
+		{
+	/*  Mapper code to remove entries with 'NA"*/
+
+			String tvList=value.toString();
+			String [] tv=tvList.split("\\|");
+			if(tv[0].equals("NA")||tv[1].equals("NA"))
+			{
+				
+			}
+				//do nothing
+				
+			else
+			{
+				con.write(new Text(tv[0]), new IntWritable(1));
+			
+			}}
+	}
+		
+		public static class TvReducer  extends Reducer<Text,IntWritable,Text,IntWritable>{
+
+			
+			public void reduce(Text key,Iterable<IntWritable>values,Context con) throws IOException, InterruptedException
+			{ int sum=0;
+				for(IntWritable val:values)
+				{
+					sum +=val.get();
+				}
+				con.write(key,new IntWritable( sum));
+				
+			}
+		}
+public static class TvPartioner extends Partitioner<Text,IntWritable>{
+
+			
+			
+
+			@Override
+			public int getPartition(Text key, IntWritable arg1, int arg2) {
+				// TODO Auto-generated method stub
+				int start=(int)(key.toString().toUpperCase()).charAt(0);//conerting whatever case is the first letter to UpperCase
+				if(start>=65 && start<=70)//A-F
+				return 0;
+				
+				else if(start>=71 && start<=76)//G-L
+					return 1;
+				else if(start>=77 && start<=82)//M-R
+					return 2;
+				else 
+					return 3;//others
+			}
+		}
+
+		public static void main(String[] args)throws Exception {
+			// Driver code 
+			
+			Configuration conf=new Configuration();
+			Job job=new Job(conf,"OnidaTVCountS");
+			job.setJarByClass(AlphabetSortedClass.class);
+			job.setMapOutputKeyClass(Text.class);
+			job.setMapOutputValueClass(IntWritable.class);
+			job.setOutputKeyClass(Text.class);
+			job.setOutputValueClass(IntWritable.class);
+			
+			
+			job.setMapperClass(TvMapper.class);
+			job.setNumReduceTasks(4);//set 4 reducers
+			job.setReducerClass(TvReducer.class);
+			job.setPartitionerClass(TvPartioner.class);
+			
+			job.setInputFormatClass(TextInputFormat.class);	
+			job.setOutputFormatClass(TextOutputFormat.class);
+			
+			FileInputFormat.addInputPath(job, new Path(args[0]));
+			FileOutputFormat.setOutputPath(job, new Path(args[1]));
+			
+			job.waitForCompletion(true);
+
+		}
+
+	}
+
+
